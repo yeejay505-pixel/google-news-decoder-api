@@ -33,4 +33,7 @@ try:
  print("G1_LOGIN_EXPIRES_AT",data.get("expires_at","unknown"),flush=True)
 except Exception as e:print("G1_LOGIN_PORTAL_CREATE_FAILED",type(e).__name__,str(e)[:300],flush=True)
 PY
+# Perform a single non-extracting check against the persistent browser identity.
+bash /app/ax_browser_broker/browser_pool/bin/launch_chrome.sh pool-a 9223 || true
+python /app/openbrowser_auth_verify.py || true
 wait "$pid"
