@@ -2,10 +2,9 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile.openbrowser-g1"
+    "dockerfilePath": "Dockerfile.openbrowser-auth"
   },
   "deploy": {
-    "startCommand": "openbrowser-broker",
     "restartPolicyType": "NEVER"
   }
 }
