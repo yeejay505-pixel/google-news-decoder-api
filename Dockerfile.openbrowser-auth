@@ -8,6 +8,7 @@ RUN ln -s /usr/bin/chromium /usr/local/bin/google-chrome
 COPY openbrowser_auth_nginx.conf /etc/nginx/conf.d/openbrowser.conf
 RUN rm -f /etc/nginx/sites-enabled/default
 COPY openbrowser_auth_start.sh /app/auth_start.sh
+COPY openbrowser_auth_verify.py /app/openbrowser_auth_verify.py
 ENV OPENBROWSER_BROKER_HOST=127.0.0.1 OPENBROWSER_BROKER_ROOT=/data/openbrowser-broker OPENBROWSER_BROWSER_POOL_DIR=/data/openbrowser-pool OPENBROWSER_SLOT_COUNT=1 OPENBROWSER_PUBLIC_AUTH_BASE_URL=https://openbrowser-auth-poc-poc.up.railway.app OPENBROWSER_PUBLIC_NOVNC_BASE_URL=https://openbrowser-auth-poc-poc.up.railway.app/vnc
 EXPOSE 8767
 CMD ["sh","/app/auth_start.sh"]
