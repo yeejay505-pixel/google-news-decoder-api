@@ -32,7 +32,7 @@ def parse_events(text):
             tail.append(chunk)
         excerpt=" ".join(tail)
         amounts=MONEY_RE.findall(excerpt)
-        dates=DATE_RE.findall(excerpt)
+        dates=[match for line_part in tail for match in DATE_RE.findall(line_part)]
         # Reject multiple conflicting figures or missing date.
         if len(amounts)!=1 or not dates: continue
         amount=int(float(amounts[0].replace(",","")))
