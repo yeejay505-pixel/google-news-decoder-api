@@ -31,6 +31,7 @@ python /app/openbrowser_continuity_inspect.py
 python /app/openbrowser_auth_verify.py
 python -m unittest -q test_g1_unit_history_adapter test_g1_history_events test_g1_evidence_store test_g1_conflict_review test_g1_unit_queue test_g1_wf02e_preview
 python /app/g1_volume_smoke.py
+python /app/g1_real_cache_smoke.py
 python /app/g1_inspect_http.py &
 echo "G1_LIVE_BROWSER_READY"
 wait "$broker_pid"
