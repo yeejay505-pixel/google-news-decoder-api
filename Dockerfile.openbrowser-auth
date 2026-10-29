@@ -8,6 +8,8 @@ RUN ln -s /usr/bin/chromium /usr/local/bin/google-chrome
 COPY openbrowser_auth_nginx.conf /etc/nginx/conf.d/openbrowser.conf
 RUN rm -f /etc/nginx/sites-enabled/default
 COPY openbrowser_auth_start.sh /app/auth_start.sh
+COPY g1_webgl_launcher.sh /app/g1_webgl_launcher.sh
+COPY g1_webgl_local_check.py /app/g1_webgl_local_check.py
 COPY openbrowser_auth_verify.py /app/openbrowser_auth_verify.py
 COPY openbrowser_continuity_inspect.py /app/openbrowser_continuity_inspect.py
 COPY openbrowser_restored_tabs.py /app/openbrowser_restored_tabs.py
