@@ -63,7 +63,7 @@ def certify(text,building,unit,source_path,observed):
     normalized=" ".join(text.split()).casefold()
     # A number mentioned anywhere in the page is insufficient for legal attribution:
     # page header identity AND known exact-unit test target required.
-    if building.casefold() not in normalized or not re.search(r"(?<!\d)"+re.escape(unit)+r"(?!\d)",normalized):
+    if building.casefold() not in normalized or not re.search(r"(?<!\d)"+re.escape(unit.casefold())+r"(?!\d)",normalized):
         return {"status":"HOLD","reason":"EXACT_UNIT_IDENTITY_NOT_PROVEN","events":[]}
     if "property history" not in normalized:
         return {"status":"HOLD","reason":"HISTORY_SECTION_NOT_VISIBLE","events":[]}
@@ -125,7 +125,7 @@ def transaction_boundary_diagnostic(text):
 def review_conflict(text, building, unit, source_path, observed_at):
     """Store-only review object for independently parsed overlapping rental cards."""
     flat=" ".join(text.split()).casefold()
-    if building.casefold() not in flat or not re.search(r"(?<!\d)"+re.escape(unit)+r"(?!\d)",flat):
+    if building.casefold() not in flat or not re.search(r"(?<!\d)"+re.escape(unit.casefold())+r"(?!\d)",flat):
         return {"status":"HOLD","reason":"UNIT_IDENTITY_UNCONFIRMED"}
     events=parse_events(text)
     if not events:return {"status":"HOLD","reason":"NO_EVENTS"}
