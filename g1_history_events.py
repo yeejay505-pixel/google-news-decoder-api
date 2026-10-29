@@ -91,3 +91,33 @@ def certify(text,building,unit,source_path,observed):
             "source_path":source_path,"snapshot_id":snapshot_id,
             "observed_at_utc":observed,"freshness":"observed_at_only_not_completeness_guarantee",
             "events":events,"evidence_key":snapshot_id}
+
+def transaction_boundary_diagnostic(text):
+    """Return only bounded label/date/price tokens and line positions; no raw page text."""
+    lines=[re.sub(r"\s+"," ",line).strip() for line in text.splitlines()]
+    lines=[line for line in lines if line]
+    heads=[i for i,line in enumerate(lines) if line.casefold()=="property history"]
+    if not heads:return {"reason":"NO_HISTORY_HEADING","markers":[]}
+    start=heads[-1]+1
+    history=lines[start:]
+    indices=[i for i,line in enumerate(history) if MARKER_RE.match(line)]
+    indices=indices[:12]
+    results=[]
+    for pos,i in enumerate(indices):
+        end=indices[pos+1] if pos+1<len(indices) else min(i+16,len(history))
+        fragment=history[i:min(end,i+16)]
+        amounts=[]
+        for j,line in enumerate(fragment):
+            if "AED" in line.upper():
+                found=AMOUNT_RE.findall(line)
+                if not found and j+1<len(fragment):found=AMOUNT_RE.findall(fragment[j+1])
+                amounts.extend(found)
+        dates=[m.group(0) for line in fragment for m in DATE_RE.finditer(line)]
+        # Distinguish status badges from sale-by labels; do not reveal text.
+        results.append({"ordinal":pos+1,"line_index":i,"lines_in_card":len(fragment),
+            "event_marker":MARKER_RE.match(fragment[0]).group(1).upper(),
+            "amounts_aed":[int(v.replace(",","")) for v in dict.fromkeys(amounts)][:3],
+            "dates":dates[:5],
+            "classification":[m.group(0).lower() for line in fragment for m in LABEL_RE.finditer(line)][:4],
+            "contains_other_marker":sum(bool(MARKER_RE.match(line)) for line in fragment[1:])>0})
+    return {"marker_count":len(indices),"markers":results}
