@@ -34,40 +34,54 @@ def cdp_targets():
     return [item for item in data if item.get('type')=='page' and HOST_RE.match(item.get('url',''))]
 
 async def inspect_open_tab():
+    """Attach directly to the existing page target; no navigation or network calls to site."""
+    import websockets
     try:
-        targets=cdp_targets()
+        targets = cdp_targets()
     except Exception as exc:
-        return {"status":"HOLD","reason":"CDP_TARGET_INVENTORY_UNAVAILABLE","error_type":type(exc).__name__}
-    if len(targets)!=1:
-        return {"status":"HOLD","reason":"CDP_TARGET_COUNT_MISMATCH","cdp_matching_targets":len(targets)}
-    target=targets[0]
-    async with async_playwright() as p:
-        browser = await p.chromium.connect_over_cdp("http://127.0.0.1:9223", timeout=12000)
-        try:
-            if not browser.contexts:
-                return {"status":"HOLD","reason":"No existing browser context"}
-            from urllib.parse import urlsplit
-            all_pages=[page for context in browser.contexts for page in context.pages]
-            pages=[page for page in all_pages if HOST_RE.match(page.url)]
-            if len(pages)!=1:
-                hosts=[]
-                for tab in all_pages:
-                    parts=urlsplit(tab.url)
-                    host=(parts.hostname or parts.scheme or "unknown").lower()
-                    if host not in hosts: hosts.append(host)
-                return {"status":"HOLD","reason":"CDP_TARGET_MISMATCH","cdp_matching_targets":len(targets),"cdp_target_path":urlsplit(target.get("url","")).path,"playwright_matching_tabs":len(pages),"total_visible_tabs":len(all_pages),"visible_tab_hosts":hosts[:10],"browser_contexts":len(browser.contexts)}
-            page=pages[0]
-            title=await page.title()
-            body=await page.locator("body").inner_text(timeout=8000)
+        return {"status": "HOLD", "reason": "CDP_TARGET_INVENTORY_UNAVAILABLE", "error_type": type(exc).__name__}
+    if len(targets) != 1:
+        return {"status": "HOLD", "reason": "CDP_TARGET_COUNT_MISMATCH", "cdp_matching_targets": len(targets)}
+    target = targets[0]
+    original_url = target.get("url", "")
+    target_id = target.get("id", "")
+    debugger_url = target.get("webSocketDebuggerUrl", "")
+    if not debugger_url.startswith("ws://127.0.0.1:9223/devtools/page/") or not target_id or not debugger_url.endswith("/" + target_id):
+        return {"status": "HOLD", "reason": "INVALID_LOCAL_TARGET"}
+    try:
+        async with websockets.connect(debugger_url, open_timeout=8, close_timeout=3, max_size=2_000_000) as ws:
+            async def evaluate(expression, request_id):
+                await ws.send(json.dumps({"id": request_id, "method": "Runtime.evaluate",
+                    "params": {"expression": expression, "returnByValue": True, "awaitPromise": False}}))
+                while True:
+                    msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
+                    if msg.get("id") == request_id:
+                        if "error" in msg or "exceptionDetails" in msg.get("result", {}):
+                            raise ValueError("CDP_RUNTIME_EVALUATION_FAILED")
+                        return msg.get("result", {}).get("result", {}).get("value")
+            # Do not read content until target location has been reverified.
+            live_url = await evaluate("location.href", 101)
+            if live_url != original_url or not HOST_RE.match(live_url or ""):
+                return {"status": "HOLD", "reason": "TARGET_CHANGED"}
+            title = await evaluate("document.title", 102)
+            # Text only, bounded. No HTML, cookies, network interception or session data.
+            body = await evaluate("(document.body && document.body.innerText || '').slice(0,150000)", 103)
+            if not isinstance(body, str) or not isinstance(title, str):
+                return {"status": "HOLD", "reason": "NO_READABLE_PAGE"}
             if "just a moment" in title.lower() or "verify you are human" in body.lower():
-                return {"status":"BLOCKED","reason":"Challenge detected; no retry"}
-            result=parse_reference(body)
-            result["page_title"]=title[:120]
-            result["observed_at_utc"]=datetime.now(timezone.utc).isoformat()
-            result["method"]="existing-tab-read-only"
+                return {"status": "BLOCKED", "reason": "Challenge detected; no retry"}
+            result = parse_reference(body)
+            if result["status"] == "HOLD":
+                return {**result, "target_path": urlsplit(original_url).path, "method": "direct-target-cdp"}
+            # Race check after reading.
+            if await evaluate("location.href", 104) != original_url:
+                return {"status": "HOLD", "reason": "TARGET_CHANGED_DURING_READ"}
+            result.update({"page_title": title[:120], "target_path": urlsplit(original_url).path,
+                           "observed_at_utc": datetime.now(timezone.utc).isoformat(),
+                           "method": "direct-target-cdp", "stored": False})
             return result
-        finally:
-            await browser.close()
+    except Exception as exc:
+        return {"status": "HOLD", "reason": "CDP_DIRECT_ATTACH_ERROR", "error_type": type(exc).__name__}
 
-if __name__=="__main__":
-    print("G1_HANDOFF_RESULT",json.dumps(asyncio.run(inspect_open_tab()),sort_keys=True),flush=True)
+if __name__ == "__main__":
+    print("G1_HANDOFF_RESULT", json.dumps(asyncio.run(inspect_open_tab()), sort_keys=True), flush=True)
