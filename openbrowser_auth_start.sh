@@ -18,7 +18,7 @@ fi
 nginx
 OPENBROWSER_BROKER_PORT=8768 openbrowser-broker &
 broker_pid=$!
-CHROME_HEADLESS=0 bash /app/ax_browser_broker/browser_pool/bin/launch_chrome.sh pool-a 9223
+CHROME_HEADLESS=0 bash /app/g1_webgl_launcher.sh pool-a 9223
 display_file=/data/openbrowser-pool/state/pool-a.display
 i=0
 while [ ! -s "$display_file" ] && [ "$i" -lt 20 ]; do sleep 1; i=$((i+1)); done
@@ -26,6 +26,7 @@ while [ ! -s "$display_file" ] && [ "$i" -lt 20 ]; do sleep 1; i=$((i+1)); done
 display="$(cat "$display_file")"
 x11vnc -display "$display" -rfbport 5900 -listen 127.0.0.1 -forever -shared -nopw -quiet &
 websockify --web /usr/share/novnc 127.0.0.1:6081 127.0.0.1:5900 &
+python /app/g1_webgl_local_check.py
 python /app/openbrowser_continuity_inspect.py
 python /app/openbrowser_auth_verify.py
 echo "G1_LIVE_BROWSER_READY"
