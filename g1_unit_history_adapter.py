@@ -67,6 +67,19 @@ async def inspect_open_tab(building, unit):
                 return {"status": "HOLD", "reason": "NO_READABLE_PAGE"}
             if "just a moment" in title.lower() or "verify you are human" in body.lower():
                 return {"status": "BLOCKED", "reason": "Challenge detected; no retry"}
+            # Isolate the property title/header from the history table and other page text.
+            # This is an independent DOM location check, not an independent registry source.
+            identity_text = await evaluate("""(() => {
+              const nodes=[...document.querySelectorAll('h1,h2,[class*="property-title"],[class*="PropertyTitle"],[data-testid*="property"],[class*="unit-detail"]')];
+              return nodes.filter(e=>e.getClientRects().length).slice(0,16)
+                .map(e=>(e.innerText||'').slice(0,240)).join(' | ').slice(0,1800);
+            })()""", 105)
+            if not isinstance(identity_text,str):
+                return {"status":"HOLD","reason":"PROPERTY_HEADER_UNREADABLE"}
+            identity = parse_reference(identity_text,building,unit)
+            if identity["status"]=="HOLD":
+                return {"status":"HOLD","reason":"PROPERTY_HEADER_IDENTITY_UNPROVEN",
+                        "building":building,"unit":unit,"header_chars":len(identity_text)}
             result = parse_reference(body,building,unit)
             if result["status"] == "HOLD":
                 return {**result, "target_path": urlsplit(original_url).path, "method": "direct-target-cdp"}
@@ -74,6 +87,8 @@ async def inspect_open_tab(building, unit):
             if await evaluate("location.href", 104) != original_url:
                 return {"status": "HOLD", "reason": "TARGET_CHANGED_DURING_READ"}
             evidence=certify(body, building, unit, urlsplit(original_url).path, datetime.now(timezone.utc).isoformat())
+            if evidence.get("status")=="VERIFIED":
+                evidence["identity_check"]="PROPERTY_HEADER_DOM_MATCH"
             result["event_certification"]=evidence
             if evidence.get("status")=="HOLD":
                 result["review_record"]=review_conflict(body,building,unit,urlsplit(original_url).path,datetime.now(timezone.utc).isoformat())
