@@ -14,6 +14,8 @@ COPY test_g1_history_events.py /app/test_g1_history_events.py
 COPY g1_evidence_store.py /app/g1_evidence_store.py
 COPY g1_unit_queue.py /app/g1_unit_queue.py
 COPY g1_wf02e_preview.py /app/g1_wf02e_preview.py
+COPY g2_wf02e_inactive_adapter.py /app/g2_wf02e_inactive_adapter.py
+COPY test_g2_wf02e_inactive_adapter.py /app/test_g2_wf02e_inactive_adapter.py
 COPY g1_real_cache_smoke.py /app/g1_real_cache_smoke.py
 COPY test_g1_wf02e_preview.py /app/test_g1_wf02e_preview.py
 COPY test_g1_unit_queue.py /app/test_g1_unit_queue.py
