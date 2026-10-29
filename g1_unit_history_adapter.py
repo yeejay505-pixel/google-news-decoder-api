@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from playwright.async_api import async_playwright
 from urllib.request import urlopen
 from urllib.parse import urlsplit
+from g1_history_events import certify
 
 HOST_RE = re.compile(r"^https://(?:www\.)?dxbinteract\.com(?:/|$)", re.I)
 PRICE_RE = re.compile(r"(?:AED\s*)?([0-9][0-9,]{3,})\s*(?:AED)?", re.I)
@@ -76,6 +77,8 @@ async def inspect_open_tab():
             # Race check after reading.
             if await evaluate("location.href", 104) != original_url:
                 return {"status": "HOLD", "reason": "TARGET_CHANGED_DURING_READ"}
+            evidence=certify(body, "Lamtara 1", "401", urlsplit(original_url).path, datetime.now(timezone.utc).isoformat())
+            result["event_certification"]=evidence
             result.update({"page_title": title[:120], "target_path": urlsplit(original_url).path,
                            "observed_at_utc": datetime.now(timezone.utc).isoformat(),
                            "method": "direct-target-cdp", "stored": False})
