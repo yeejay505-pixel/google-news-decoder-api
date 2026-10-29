@@ -82,17 +82,18 @@ async def inspect_open_tab():
             if evidence.get("status")=="HOLD":
                 # Minimal, allowlisted diagnostic from history section only.
                 # Never return owner names, addresses, phone numbers, or arbitrary DOM.
-                section=body.lower().rfind("property history")
-                if section>=0:
-                    candidates=body[section:section+14000].splitlines()
-                    import re as _re
-                    keep=_re.compile(r"(?:\\b(?:AED|SOLD|RENTED|RENTAL|RENT|NEW CONTRACT|RENEWAL|PRIMARY|RESALE)\\b|\\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\\b|\\d{1,2}[, /-]+\\d{4})",_re.I)
-                    eligible=[line.strip() for line in candidates if keep.search(line)]
-                    # Replace unrecognized alphabetic words with a generic marker.
-                    def redact(line):
-                        tokens=_re.findall(r"AED|SOLD|RENTED|RENTAL|RENT|NEW|CONTRACT|RENEWAL|PRIMARY|RESALE|\\d[\\d,. /-]*|JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER|JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC",line,_re.I)
-                        return " ".join(tokens)[:140]
-                    result["event_diagnostic"]={"eligible_line_count":len(eligible),"samples":[redact(line) for line in eligible[:32]]}
+                # Search all visible lines rather than relying on a heading's last occurrence.
+                # Only report strictly allowlisted tokens, never raw page or personal data.
+                import re as _re
+                candidates=body.splitlines()
+                token_re=_re.compile(r"\b(?:AED|SOLD|RENTED|RENTAL|RENT|NEW|CONTRACT|RENEWAL|PRIMARY|RESALE|JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER|JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\b|\d[\d,. /-]*",_re.I)
+                keyword_re=_re.compile(r"\b(?:AED|SOLD|RENTED|RENTAL|RENT|NEW CONTRACT|RENEWAL|PRIMARY|RESALE)\b",_re.I)
+                hits=[]
+                for line in candidates:
+                    if keyword_re.search(line):
+                        tokens=token_re.findall(line)
+                        if tokens: hits.append(" ".join(tokens)[:120])
+                result["event_diagnostic"]={"matching_line_count":len(hits),"samples":hits[:32],"visible_lines":len(candidates)}
 
             result.update({"page_title": title[:120], "target_path": urlsplit(original_url).path,
                            "observed_at_utc": datetime.now(timezone.utc).isoformat(),
