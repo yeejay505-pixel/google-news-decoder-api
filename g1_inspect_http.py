@@ -34,8 +34,23 @@ class Handler(BaseHTTPRequestHandler):
       inspected["persistence"]=persist(ev)
      elif review.get("status")=="CONFLICT_REQUIRES_REVIEW":
       inspected["review_persistence"]=persist_review(review)
+     # The individual /g1-inspect may already have durably certified this unit.
+     # Use it only after strict matching identity and SQLite readback, never
+     # as a claim that this batch just performed a new live page extraction.
+     provenance="LIVE_PAGE"
+     if not (inspected.get("persistence") or {}).get("readback_verified") and not (inspected.get("review_persistence") or {}).get("readback_verified"):
+      cached=read_cached(previous["building"],unit)
+      saved=cached.get("evidence",{}) if cached.get("status")=="VERIFIED" else {}
+      if (saved.get("status")=="VERIFIED" and saved.get("building")==previous["building"]
+          and str(saved.get("unit"))==unit and saved.get("identity_check")=="PROPERTY_HEADER_DOM_MATCH"):
+       verified_readback=persist(saved)
+       if verified_readback.get("readback_verified"):
+        inspected={"event_certification":saved,"persistence":verified_readback}
+        provenance="EXISTING_VERIFIED_CACHE"
      receipt=record_observation(bid,unit,inspected)
-     response={"unit":unit,"receipt":receipt,"batch":batch_status(bid)}
+     response={"unit":unit,"receipt":receipt,"evidence_provenance":provenance if receipt.get("accepted") else "NONE",
+       "inspection_status":inspected.get("status","NOT_REPORTED"),
+       "inspection_reason":inspected.get("reason"),"batch":batch_status(bid)}
   except Exception as exc:
    response={"status":"HOLD","reason":"BATCH_OPERATION_FAILED","error_type":type(exc).__name__}
   self.send_json(response)
