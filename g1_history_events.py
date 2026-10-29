@@ -5,7 +5,7 @@ from datetime import datetime
 MONTH=r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
 DATE_RE=re.compile(rf"(?:(?<!\d)\d{{1,2}}\s*[,/-]?\s*)?{MONTH}\s*[,/-]?\s*\d{{4}}",re.I)
 AMOUNT_RE=re.compile(r"(?<!\d)\d{1,3}(?:,\d{3})+(?!\d)")
-MARKER_RE=re.compile(r"^\s*(?:[●•◉☑✓]\s*)?(SOLD|RENTED)\b",re.I)
+MARKER_RE=re.compile(r"^\s*(?:[●•◉☑✓]\s*)?(SOLD|RENTED)\b(?!\s+BY\b)",re.I)
 LABEL_RE=re.compile(r"\b(?:resale|primary|new contract|renewal)\b",re.I)
 
 def date_normalize(raw):
