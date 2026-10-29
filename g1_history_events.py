@@ -121,3 +121,25 @@ def transaction_boundary_diagnostic(text):
             "classification":[m.group(0).lower() for line in fragment for m in LABEL_RE.finditer(line)][:4],
             "contains_other_marker":sum(bool(MARKER_RE.match(line)) for line in fragment[1:])>0})
     return {"marker_count":len(indices),"markers":results}
+
+def review_conflict(text, building, unit, source_path, observed_at):
+    """Store-only review object for independently parsed overlapping rental cards."""
+    flat=" ".join(text.split()).casefold()
+    if building.casefold() not in flat or not re.search(r"(?<!\d)"+re.escape(unit)+r"(?!\d)",flat):
+        return {"status":"HOLD","reason":"UNIT_IDENTITY_UNCONFIRMED"}
+    events=parse_events(text)
+    if not events:return {"status":"HOLD","reason":"NO_EVENTS"}
+    rentals=sorted((e for e in events if e["type"]=="rent"),key=lambda e:e["lease_start"])
+    overlaps=[]
+    for i,left in enumerate(rentals):
+        for right in rentals[i+1:]:
+            if left["lease_start"]<right["lease_end"] and right["lease_start"]<left["lease_end"]:
+                overlaps.append({"left":[left["lease_start"],left["lease_end"]],"right":[right["lease_start"],right["lease_end"]]})
+    if not overlaps:return {"status":"HOLD","reason":"NO_OVERLAP_REVIEW_NEEDED"}
+    canonical=json.dumps(events,sort_keys=True,separators=(",",":"))
+    snapshot_id=hashlib.sha256((building+"|"+unit+"|"+source_path+"|"+canonical).encode()).hexdigest()
+    return {"status":"CONFLICT_REQUIRES_REVIEW","building":building,"unit":unit,
+            "source":"DXBinteract Property History","source_path":source_path,
+            "observed_at_utc":observed_at,"snapshot_id":snapshot_id,
+            "events":events,"conflicts":{"overlapping_rental_periods":overlaps},
+            "source_identity":"manual_page_identity_unverified","eligible_for_outreach":False}
