@@ -28,7 +28,7 @@ class HandoffTests(unittest.TestCase):
  def test_conflict_blocks_handoff(self):
   with tempfile.TemporaryDirectory() as d:
    path=Path(d)/"cache.sqlite"
-   extra="● RENTED\\nAED\\n190,000\\nJun 2023 - Jun 2024\\nNew contract\\n"
+   extra="● RENTED\nAED\n190,000\nJun 2023 - Jun 2024\nNew contract\n"
    data=FIXTURE.replace("● SOLD",extra+"● SOLD",1)
    review=review_conflict(data,"Lamtara 1","401","/search/test","2026-10-30T00:00Z")
    self.assertEqual(review["status"],"CONFLICT_REQUIRES_REVIEW")
