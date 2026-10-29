@@ -29,7 +29,7 @@ websockify --web /usr/share/novnc 127.0.0.1:6081 127.0.0.1:5900 &
 python /app/g1_webgl_local_check.py
 python /app/openbrowser_continuity_inspect.py
 python /app/openbrowser_auth_verify.py
-python -m unittest -q test_g1_unit_history_adapter
+python -m unittest -q test_g1_unit_history_adapter test_g1_history_events test_g1_evidence_store
 python /app/g1_inspect_http.py &
 echo "G1_LIVE_BROWSER_READY"
 wait "$broker_pid"
