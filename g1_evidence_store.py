@@ -21,7 +21,9 @@ def persist(payload,db_path=DB):
         conn.execute("COMMIT")
         loaded=json.loads(row[0])
         assert loaded["evidence_key"]==payload["evidence_key"]
-        return {"stored":True,"duplicate":res.rowcount==0,"readback_verified":loaded==payload,
+        immutable=("evidence_key","snapshot_id","building","unit","source","source_path","events","status")
+        matching=all(loaded.get(k)==payload.get(k) for k in immutable)
+        return {"stored":matching,"duplicate":res.rowcount==0,"readback_verified":matching,
                 "evidence_key":payload["evidence_key"],"store":"G1 isolated SQLite"}
     except Exception:
         if conn.in_transaction: conn.execute("ROLLBACK")
