@@ -94,8 +94,13 @@ async def inspect_open_tab(building, unit):
                     "unit_candidates":sum(v["unit_match"] for v in flags),
                     "both_candidates":sum(v["building_match"] and v["unit_match"] for v in flags),
                     "match_tags":[v["tag"] for v in flags if v["building_match"] or v["unit_match"]][:10]}
-            identity = parse_reference(identity_text,building,unit)
-            if identity["status"]=="HOLD":
+            # Require both identifiers in one bounded visible property-detail element.
+            # Do not join unrelated H2 and DIV text to manufacture a match.
+            matching_details = [e for e in structure if isinstance(e,dict)
+                and e.get("tag") in ("DIV","H1","H2","H3")
+                and len(str(e.get("text","")).strip())<=240
+                and parse_reference(str(e.get("text","")),building,unit)["status"]!="HOLD"]
+            if not matching_details:
                 return {"status":"HOLD","reason":"PROPERTY_HEADER_IDENTITY_UNPROVEN",
                         "building":building,"unit":unit,"header_chars":len(identity_text),"dom_diagnostic":identity_diag()}
             result = parse_reference(body,building,unit)
