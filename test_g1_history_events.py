@@ -27,7 +27,7 @@ class Tests(unittest.TestCase):
  def test_missing_rent_hold(self):
   self.assertEqual(certify(FIXTURE.split("● RENTED")[0],"Lamtara 1","401","/search/test","2026-10-29T18:00Z")["status"],"HOLD")
  def test_conflicting_rental_period_hold(self):
-  changed=FIXTURE.replace("Nov 2023 - Nov 2024","Jun 2023 - Jun 2024")
+  changed=FIXTURE.replace("Nov 2024 - Nov 2025","Apr 2024 - Jun 2025")
   receipt=certify(changed,"Lamtara 1","401","/search/test","2026-10-29T18:00Z")
   self.assertEqual(receipt["status"],"HOLD")
   self.assertEqual(receipt["reason"],"OVERLAPPING_RENTAL_PERIODS_REQUIRE_SOURCE_REVIEW")
