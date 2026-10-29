@@ -88,12 +88,23 @@ async def inspect_open_tab():
                 candidates=body.splitlines()
                 token_re=_re.compile(r"\b(?:AED|SOLD|RENTED|RENTAL|RENT|NEW|CONTRACT|RENEWAL|PRIMARY|RESALE|JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER|JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\b|\d[\d,. /-]*",_re.I)
                 keyword_re=_re.compile(r"\b(?:AED|SOLD|RENTED|RENTAL|RENT|NEW CONTRACT|RENEWAL|PRIMARY|RESALE)\b",_re.I)
-                hits=[]
-                for line in candidates:
-                    if keyword_re.search(line):
-                        tokens=token_re.findall(line)
-                        if tokens: hits.append(" ".join(tokens)[:120])
-                result["event_diagnostic"]={"matching_line_count":len(hits),"samples":hits[:32],"visible_lines":len(candidates)}
+                # Context window around transaction markers, redacted to allowlisted
+                # labels, dates and currency only; never emit owner/agent text.
+                event_marker=_re.compile(r"^\s*(?:SOLD|RENTED)\s*$",_re.I)
+                amount_re=_re.compile(r"\bAED\s*\d[\d,]*(?:\.\d+)?\b",_re.I)
+                date_re=_re.compile(r"\b(?:\d{1,2}\s*[,/-]?\s*)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*[-/,]?\s*\d{4}\b",_re.I)
+                keep_label=_re.compile(r"\b(?:SOLD|RENTED|Resale|Primary|New contract|Renewal)\b",_re.I)
+                windows=[]
+                for i,line in enumerate(candidates):
+                    if not event_marker.fullmatch(line.strip()): continue
+                    snippets=[]
+                    for candidate in candidates[i:min(len(candidates),i+13)]:
+                        if len(snippets)>0 and event_marker.fullmatch(candidate.strip()): break
+                        tokens=amount_re.findall(candidate)+date_re.findall(candidate)+keep_label.findall(candidate)
+                        if tokens: snippets.append(" | ".join(tokens)[:120])
+                    windows.append({"marker":line.strip().upper(),"tokens":snippets[:9]})
+                result["event_diagnostic"]={"card_windows":windows[:8],"visible_lines":len(candidates),"card_markers":len(windows)}
+
 
             result.update({"page_title": title[:120], "target_path": urlsplit(original_url).path,
                            "observed_at_utc": datetime.now(timezone.utc).isoformat(),
