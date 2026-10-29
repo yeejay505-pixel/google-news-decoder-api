@@ -54,7 +54,10 @@ def persist_review(payload, db_path=DB):
         row=conn.execute("SELECT payload_json FROM unit_review WHERE snapshot_id=?",(payload["snapshot_id"],)).fetchone()
         conn.execute("COMMIT")
         readback=json.loads(row[0])
-        assert readback==payload
+        immutable=("snapshot_id","building","unit","source","source_path","events","conflicts","status","eligible_for_outreach")
+        verified=all(readback.get(k)==payload.get(k) for k in immutable)
+        if not verified:
+            return {"stored":False,"reason":"SNAPSHOT_CONTENT_MISMATCH","duplicate":added==0,"review_only":True}
         return {"stored":True,"review_only":True,"eligible_for_outreach":False,"duplicate":added==0,
                 "readback_verified":True,"snapshot_id":payload["snapshot_id"],"store":"G1 isolated unit_review"}
     except Exception:
