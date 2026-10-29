@@ -50,6 +50,15 @@ class Handler(BaseHTTPRequestHandler):
 
  def do_GET(self):
   route=urlsplit(self.path)
+  if route.path=="/batch-operator":
+   blob="<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>G1 Two-Unit Batch</title><style>body{font:16px system-ui,sans-serif;max-width:620px;margin:48px auto;padding:0 20px}button{font:inherit;padding:14px 18px;cursor:pointer;margin:8px 8px 8px 0}pre{background:#f4f4f4;white-space:pre-wrap;overflow-wrap:anywhere;padding:16px}p{line-height:1.5}</style><h2>Release 2 — Golf Heights 901 → 902</h2><p>Keep the DXBinteract Property History → All tab open in the secure browser. Do not change units until the queue says 902 is next.</p><button onclick=\"start()\">1. Initialize 901 → 902</button><button onclick=\"capture()\">2. Capture current unit</button><p id=\"message\">No batch initialized yet.</p><pre id=\"output\"></pre><script>let batchId;const message=document.querySelector('#message'),output=document.querySelector('#output');async function call(route,payload){const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!response.ok)throw Error('HTTP '+response.status);return response.json()}function render(x){output.textContent=JSON.stringify(x,null,2);const b=x.batch||x;batchId=b.batch_id||batchId;message.textContent=x.receipt?.accepted===false?'HOLD: '+x.receipt.reason:b.next_unit?'Next unit: '+b.next_unit:b.state==='COMPLETE'?'Batch complete':x.reason||'Review result';}async function start(){try{render(await call('/g1-batch-create',{building:'Golf Heights',units:['901','902']}))}catch(e){message.textContent=e.message}}async function capture(){if(!batchId){message.textContent='Initialize the batch first';return}try{render(await call('/g1-batch-capture',{batch_id:batchId}))}catch(e){message.textContent=e.message}}</script></html>".encode()
+   self.send_response(200)
+   self.send_header("Content-Type","text/html; charset=utf-8")
+   self.send_header("Cache-Control","no-store")
+   self.send_header("Content-Length",str(len(blob)))
+   self.end_headers()
+   self.wfile.write(blob)
+   return
   if route.path not in ("/inspect","/cache","/handoff-preview","/batch-status"):
    self.send_error(404); return
   params=parse_qs(route.query)
