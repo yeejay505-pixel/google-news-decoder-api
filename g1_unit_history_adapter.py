@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from playwright.async_api import async_playwright
 from urllib.request import urlopen
 from urllib.parse import urlsplit
-from g1_history_events import certify
+from g1_history_events import certify, transaction_boundary_diagnostic
 
 HOST_RE = re.compile(r"^https://(?:www\.)?dxbinteract\.com(?:/|$)", re.I)
 PRICE_RE = re.compile(r"(?:AED\s*)?([0-9][0-9,]{3,})\s*(?:AED)?", re.I)
@@ -79,6 +79,8 @@ async def inspect_open_tab():
                 return {"status": "HOLD", "reason": "TARGET_CHANGED_DURING_READ"}
             evidence=certify(body, "Lamtara 1", "401", urlsplit(original_url).path, datetime.now(timezone.utc).isoformat())
             result["event_certification"]=evidence
+            if evidence.get("status")=="HOLD":
+                result["boundary_diagnostic"]=transaction_boundary_diagnostic(body)
             if evidence.get("status")=="HOLD":
                 # Minimal, allowlisted diagnostic from history section only.
                 # Never return owner names, addresses, phone numbers, or arbitrary DOM.
