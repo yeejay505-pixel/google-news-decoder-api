@@ -6,6 +6,8 @@ import json
 import re
 from datetime import datetime, timezone
 from playwright.async_api import async_playwright
+from urllib.request import urlopen
+from urllib.parse import urlsplit
 
 HOST_RE = re.compile(r"^https://(?:www\.)?dxbinteract\.com(?:/|$)", re.I)
 PRICE_RE = re.compile(r"(?:AED\s*)?([0-9][0-9,]{3,})\s*(?:AED)?", re.I)
@@ -25,7 +27,20 @@ def parse_reference(text, building="Lamtara 1", unit="401"):
             "building":building,"unit":unit,"reference_checks":{"two_bedrooms":beds,"size_1356_sqft":size,"sale_3600000":sale,"rent_190000":rent},
             "note":"Reference-value presence only; dates/event attribution still require review"}
 
+def cdp_targets():
+    # Local Chrome discovery only. Do not expose debugger WebSocket addresses.
+    with urlopen('http://127.0.0.1:9223/json/list', timeout=5) as response:
+        data=json.load(response)
+    return [item for item in data if item.get('type')=='page' and HOST_RE.match(item.get('url',''))]
+
 async def inspect_open_tab():
+    try:
+        targets=cdp_targets()
+    except Exception as exc:
+        return {"status":"HOLD","reason":"CDP_TARGET_INVENTORY_UNAVAILABLE","error_type":type(exc).__name__}
+    if len(targets)!=1:
+        return {"status":"HOLD","reason":"CDP_TARGET_COUNT_MISMATCH","cdp_matching_targets":len(targets)}
+    target=targets[0]
     async with async_playwright() as p:
         browser = await p.chromium.connect_over_cdp("http://127.0.0.1:9223", timeout=12000)
         try:
@@ -40,7 +55,7 @@ async def inspect_open_tab():
                     parts=urlsplit(tab.url)
                     host=(parts.hostname or parts.scheme or "unknown").lower()
                     if host not in hosts: hosts.append(host)
-                return {"status":"HOLD","reason":"Expected exactly one already-open DXBinteract tab","matching_tabs":len(pages),"total_visible_tabs":len(all_pages),"visible_tab_hosts":hosts[:10],"browser_contexts":len(browser.contexts)}
+                return {"status":"HOLD","reason":"CDP_TARGET_MISMATCH","cdp_matching_targets":len(targets),"cdp_target_path":urlsplit(target.get("url","")).path,"playwright_matching_tabs":len(pages),"total_visible_tabs":len(all_pages),"visible_tab_hosts":hosts[:10],"browser_contexts":len(browser.contexts)}
             page=pages[0]
             title=await page.title()
             body=await page.locator("body").inner_text(timeout=8000)
