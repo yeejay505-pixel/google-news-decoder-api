@@ -27,7 +27,7 @@ def analyze(listings,market,as_of="2026-10-30"):
   listed=parse_date(a.get("first_seen"))
   verified=bool(a.get("unit_identity_verified")) and bool(unit)
   # Do not infer duplicate units from bedroom, size or price alone.
-  group=("EXACT",building,unit) if verified else ("SOURCE",source,ref)
+  group=("EXACT",building,unit,kind) if verified else ("SOURCE",source,ref,kind)
   checks=[]
   if not building or kind not in ("sale","rent"):checks.append("INVALID_LOCATION_OR_KIND")
   if not isinstance(size,(int,float)) or size<=0:checks.append("INVALID_SIZE")
