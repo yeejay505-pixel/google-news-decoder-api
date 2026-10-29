@@ -16,4 +16,5 @@ python /app/openbrowser_continuity_inspect.py
 bash /app/ax_browser_broker/browser_pool/bin/launch_chrome.sh pool-a 9223
 sleep 3
 python /app/openbrowser_restored_tabs.py
+python /app/openbrowser_auth_verify.py
 wait "$pid"
