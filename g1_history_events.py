@@ -68,6 +68,15 @@ def certify(text,building,unit,source_path,observed):
     if "property history" not in normalized:
         return {"status":"HOLD","reason":"HISTORY_SECTION_NOT_VISIBLE","events":[]}
     events=parse_events(text)
+    # Do not silently discard additional rentals. Flag overlapping intervals
+    # for human source-card review before any evidence is persisted.
+    rentals=sorted((e for e in events if e["type"]=="rent"),key=lambda e:e["lease_start"])
+    overlaps=[]
+    for left,right in zip(rentals,rentals[1:]):
+        if left["lease_end"]>right["lease_start"]:
+            overlaps.append({"earlier_start":left["lease_start"],"later_start":right["lease_start"]})
+    if overlaps:
+        return {"status":"HOLD","reason":"OVERLAPPING_RENTAL_PERIODS_REQUIRE_SOURCE_REVIEW","events":events,"overlaps":overlaps}
     # Five events only for this one bounded reference acceptance case, no guessing.
     if len(events)!=5 or sum(x["type"]=="sale" for x in events)!=2 or sum(x["type"]=="rent" for x in events)!=3:
         return {"status":"HOLD","reason":"FIVE_EVENT_COMPLETENESS_UNVERIFIED","events":events}
