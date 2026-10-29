@@ -7,18 +7,18 @@ import re
 from datetime import datetime, timezone
 from playwright.async_api import async_playwright
 
-HOST_RE = re.compile(r"^https://(?:www\\.)?dxbinteract\\.com(?:/|$)", re.I)
-PRICE_RE = re.compile(r"(?:AED\\s*)?([0-9][0-9,]{3,})\\s*(?:AED)?", re.I)
+HOST_RE = re.compile(r"^https://(?:www\.)?dxbinteract\.com(?:/|$)", re.I)
+PRICE_RE = re.compile(r"(?:AED\s*)?([0-9][0-9,]{3,})\s*(?:AED)?", re.I)
 
 def parse_reference(text, building="Lamtara 1", unit="401"):
-    text = re.sub(r"\\s+", " ", text or "")
+    text = re.sub(r"\s+", " ", text or "")
     # Diagnostic evidence: do not infer a unit from prices alone.
     normalized = text.lower()
-    identity = building.lower() in normalized and bool(re.search(r"(?<!\\d)"+re.escape(unit)+r"(?!\\d)", text))
+    identity = building.lower() in normalized and bool(re.search(r"(?<!\d)"+re.escape(unit)+r"(?!\d)", text))
     if not identity:
         return {"status":"HOLD","reason":"Exact building and unit not both present in currently visible page","building":building,"unit":unit}
-    beds = bool(re.search(r"2\\s*(?:beds?|bedrooms?)", text, re.I))
-    size = bool(re.search(r"1[,]?356(?:\\.0+)?\\s*(?:sq\\.?\\s*ft|sqft)", text, re.I))
+    beds = bool(re.search(r"2\s*(?:beds?|bedrooms?)", text, re.I))
+    size = bool(re.search(r"1[,]?356(?:\.0+)?\s*(?:sq\.?\s*ft|sqft)", text, re.I))
     sale = bool(re.search(r"(?:3,600,000|3600000)", text))
     rent = bool(re.search(r"(?:190,000|190000)", text))
     return {"status":"EVIDENCE_PRESENT" if all((beds,size,sale,rent)) else "INCOMPLETE",
