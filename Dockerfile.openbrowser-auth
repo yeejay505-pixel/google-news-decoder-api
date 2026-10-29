@@ -1,6 +1,6 @@
 FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates nginx chromium x11vnc websockify novnc xvfb curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates openssl nginx chromium x11vnc websockify novnc xvfb curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN git clone --depth 1 https://github.com/floomhq/openbrowser.git /app
 RUN pip install -e . && python -m playwright install --with-deps chromium
@@ -11,6 +11,6 @@ COPY openbrowser_auth_start.sh /app/auth_start.sh
 COPY openbrowser_auth_verify.py /app/openbrowser_auth_verify.py
 COPY openbrowser_continuity_inspect.py /app/openbrowser_continuity_inspect.py
 COPY openbrowser_restored_tabs.py /app/openbrowser_restored_tabs.py
-ENV OPENBROWSER_BROKER_HOST=127.0.0.1 OPENBROWSER_BROKER_ROOT=/data/openbrowser-broker OPENBROWSER_BROWSER_POOL_DIR=/data/openbrowser-pool OPENBROWSER_SLOT_COUNT=1 OPENBROWSER_PUBLIC_AUTH_BASE_URL=https://openbrowser-auth-poc-poc.up.railway.app OPENBROWSER_PUBLIC_NOVNC_BASE_URL=https://openbrowser-auth-poc-poc.up.railway.app/vnc
+ENV OPENBROWSER_BROKER_HOST=127.0.0.1 OPENBROWSER_BROKER_ROOT=/data/openbrowser-broker OPENBROWSER_BROWSER_POOL_DIR=/data/openbrowser-pool OPENBROWSER_SLOT_COUNT=1
 EXPOSE 8767
 CMD ["sh","/app/auth_start.sh"]
