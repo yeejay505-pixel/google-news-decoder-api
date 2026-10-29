@@ -13,4 +13,7 @@ nginx
 OPENBROWSER_BROKER_PORT=8768 openbrowser-broker &
 pid=$!
 python /app/openbrowser_continuity_inspect.py
+bash /app/ax_browser_broker/browser_pool/bin/launch_chrome.sh pool-a 9223
+sleep 3
+python /app/openbrowser_restored_tabs.py
 wait "$pid"
