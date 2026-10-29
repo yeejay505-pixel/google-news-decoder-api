@@ -2,11 +2,12 @@
 import asyncio
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlsplit
 from g1_unit_history_adapter import inspect_open_tab
 
 class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
-  if self.path != "/inspect":
+  if urlsplit(self.path).path != "/inspect":
    self.send_error(404); return
   try: result=asyncio.run(inspect_open_tab())
   except Exception as exc: result={"status":"HOLD","reason":"Inspection error","error_type":type(exc).__name__}
