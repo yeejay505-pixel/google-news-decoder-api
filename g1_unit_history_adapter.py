@@ -76,10 +76,28 @@ async def inspect_open_tab(building, unit):
             })()""", 105)
             if not isinstance(identity_text,str):
                 return {"status":"HOLD","reason":"PROPERTY_HEADER_UNREADABLE"}
+            structure = await evaluate("""(() => {
+              const nodes=[...document.querySelectorAll('h1,h2,h3,[class*="property"],[class*="unit"],[class*="detail"],[class*="title"]')]
+                .filter(e=>e.getClientRects().length && (e.innerText||'').trim().length>0).slice(0,70);
+              return nodes.map(e=>({tag:e.tagName,depth:e.parentElement?.tagName||'',
+                text:(e.innerText||'').slice(0,300)}));
+            })()""",106)
+            if not isinstance(structure,list): structure=[]
+            def identity_diag():
+                # Return match flags and tags only, never arbitrary page text.
+                flags=[]
+                for e in structure[:70]:
+                    value=e.get("text","") if isinstance(e,dict) else ""
+                    flags.append({"tag":str(e.get("tag",""))[:12],"building_match":building.casefold() in value.casefold(),
+                        "unit_match":bool(re.search(r"(?<![a-z0-9])"+re.escape(unit.casefold())+r"(?![a-z0-9])",value.casefold()))})
+                return {"scanned":len(flags),"building_candidates":sum(v["building_match"] for v in flags),
+                    "unit_candidates":sum(v["unit_match"] for v in flags),
+                    "both_candidates":sum(v["building_match"] and v["unit_match"] for v in flags),
+                    "match_tags":[v["tag"] for v in flags if v["building_match"] or v["unit_match"]][:10]}
             identity = parse_reference(identity_text,building,unit)
             if identity["status"]=="HOLD":
                 return {"status":"HOLD","reason":"PROPERTY_HEADER_IDENTITY_UNPROVEN",
-                        "building":building,"unit":unit,"header_chars":len(identity_text)}
+                        "building":building,"unit":unit,"header_chars":len(identity_text),"dom_diagnostic":identity_diag()}
             result = parse_reference(body,building,unit)
             if result["status"] == "HOLD":
                 return {**result, "target_path": urlsplit(original_url).path, "method": "direct-target-cdp"}
