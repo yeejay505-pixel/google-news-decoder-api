@@ -40,7 +40,7 @@ def browser_processes():
         if not proc.name.isdigit():
             continue
         try:
-            raw = (proc / "cmdline").read_bytes().replace(b"\\x00", b" ").decode(errors="replace")
+            raw = (proc / "cmdline").read_bytes().replace(b"\x00", b" ").decode(errors="replace")
         except (PermissionError, FileNotFoundError, ProcessLookupError):
             continue
         if "--remote-debugging-port=9223" not in raw or "--user-data-dir=" not in raw:
