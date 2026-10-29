@@ -21,4 +21,11 @@ class Tests(unittest.TestCase):
   receipt=certify(changed,"Lamtara 1","401","/search/test","2026-10-29T18:00Z")
   self.assertEqual(receipt["status"],"HOLD")
   self.assertEqual(receipt["reason"],"THIRD_RENTAL_PERIOD_CONFLICT_REQUIRES_REVIEW")
+ def test_spurious_overlapping_rental_hold(self):
+  extra="● RENTED\\nAED\\n190,000\\nApr 2024 - Jun 2026\\nNew contract\\n"
+  changed=FIXTURE.replace("● SOLD",extra+"● SOLD",1)
+  receipt=certify(changed,"Lamtara 1","401","/search/test","2026-10-29T18:00Z")
+  self.assertEqual(receipt["status"],"HOLD")
+  self.assertEqual(receipt["reason"],"OVERLAPPING_RENTAL_PERIODS_REQUIRE_SOURCE_REVIEW")
+  self.assertEqual(len(receipt["events"]),6)
 if __name__=="__main__":unittest.main()
