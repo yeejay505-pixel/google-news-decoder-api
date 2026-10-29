@@ -13,7 +13,7 @@ from g1_history_events import certify, transaction_boundary_diagnostic, review_c
 HOST_RE = re.compile(r"^https://(?:www\.)?dxbinteract\.com(?:/|$)", re.I)
 PRICE_RE = re.compile(r"(?:AED\s*)?([0-9][0-9,]{3,})\s*(?:AED)?", re.I)
 
-def parse_reference(text, building="Lamtara 1", unit="401"):
+def parse_reference(text, building, unit):
     text = re.sub(r"\s+", " ", text or "")
     # Diagnostic evidence: do not infer a unit from prices alone.
     normalized = text.lower()
@@ -34,7 +34,7 @@ def cdp_targets():
         data=json.load(response)
     return [item for item in data if item.get('type')=='page' and HOST_RE.match(item.get('url',''))]
 
-async def inspect_open_tab():
+async def inspect_open_tab(building, unit):
     """Attach directly to the existing page target; no navigation or network calls to site."""
     import websockets
     try:
@@ -71,16 +71,16 @@ async def inspect_open_tab():
                 return {"status": "HOLD", "reason": "NO_READABLE_PAGE"}
             if "just a moment" in title.lower() or "verify you are human" in body.lower():
                 return {"status": "BLOCKED", "reason": "Challenge detected; no retry"}
-            result = parse_reference(body)
+            result = parse_reference(body,building,unit)
             if result["status"] == "HOLD":
                 return {**result, "target_path": urlsplit(original_url).path, "method": "direct-target-cdp"}
             # Race check after reading.
             if await evaluate("location.href", 104) != original_url:
                 return {"status": "HOLD", "reason": "TARGET_CHANGED_DURING_READ"}
-            evidence=certify(body, "Lamtara 1", "401", urlsplit(original_url).path, datetime.now(timezone.utc).isoformat())
+            evidence=certify(body, building, unit, urlsplit(original_url).path, datetime.now(timezone.utc).isoformat())
             result["event_certification"]=evidence
             if evidence.get("status")=="HOLD":
-                result["review_record"]=review_conflict(body,"Lamtara 1","401",urlsplit(original_url).path,datetime.now(timezone.utc).isoformat())
+                result["review_record"]=review_conflict(body,building,unit,urlsplit(original_url).path,datetime.now(timezone.utc).isoformat())
             if evidence.get("status")=="HOLD":
                 result["boundary_diagnostic"]=transaction_boundary_diagnostic(body)
             if evidence.get("status")=="HOLD":
@@ -118,4 +118,4 @@ async def inspect_open_tab():
         return {"status": "HOLD", "reason": "CDP_DIRECT_ATTACH_ERROR", "error_type": type(exc).__name__}
 
 if __name__ == "__main__":
-    print("G1_HANDOFF_RESULT", json.dumps(asyncio.run(inspect_open_tab()), sort_keys=True), flush=True)
+    print("G1_HANDOFF_RESULT", json.dumps(asyncio.run(inspect_open_tab("Lamtara 1","401")), sort_keys=True), flush=True)
