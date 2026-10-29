@@ -14,7 +14,8 @@ class ConflictReviewTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as p:
    db=Path(p)/"test.sqlite3"
    first=persist_review(record,db)
-   second=persist_review(record,db)
+   later={**record,"observed_at_utc":"2026-10-30T00:00:00Z"}
+   second=persist_review(later,db)
    self.assertTrue(first["stored"] and first["readback_verified"] and not first["duplicate"])
    self.assertTrue(second["duplicate"] and second["readback_verified"])
    self.assertFalse(persist(record,db)["stored"])
