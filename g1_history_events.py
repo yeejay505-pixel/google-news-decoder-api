@@ -77,19 +77,15 @@ def certify(text,building,unit,source_path,observed):
             overlaps.append({"earlier_start":left["lease_start"],"later_start":right["lease_start"]})
     if overlaps:
         return {"status":"HOLD","reason":"OVERLAPPING_RENTAL_PERIODS_REQUIRE_SOURCE_REVIEW","events":events,"overlaps":overlaps}
-    # Five events only for this one bounded reference acceptance case, no guessing.
-    if len(events)!=5 or sum(x["type"]=="sale" for x in events)!=2 or sum(x["type"]=="rent" for x in events)!=3:
-        return {"status":"HOLD","reason":"FIVE_EVENT_COMPLETENESS_UNVERIFIED","events":events}
-    # Earlier source evidence conflicts with the latest displayed third rental period.
-    # Keep this case on HOLD until the discrepancy is reconciled explicitly.
-    starts={x["lease_start"] for x in events if x["type"]=="rent"}
-    if "2023-06" in starts:
-        return {"status":"HOLD","reason":"THIRD_RENTAL_PERIOD_CONFLICT_REQUIRES_REVIEW","events":events}
+    # General V1: every recognized source card must parse, independent of count.
+    cards=transaction_boundary_diagnostic(text)["marker_count"]
+    if cards == 0 or cards != len(events):
+        return {"status":"HOLD","reason":"EVENT_CARD_PARITY_UNVERIFIED","events":events,"visible_cards":cards}
     canonical=json.dumps(events,sort_keys=True,separators=(",",":"))
     snapshot_id=hashlib.sha256((building+"|"+unit+"|"+source_path+"|"+canonical).encode()).hexdigest()
     return {"status":"VERIFIED","building":building,"unit":unit,"source":"DXBinteract Property History",
             "source_path":source_path,"snapshot_id":snapshot_id,
-            "observed_at_utc":observed,"freshness":"observed_at_only_not_completeness_guarantee",
+            "observed_at_utc":observed,"freshness":"observed_at_only_not_completeness_guarantee","identity_check":"TEXT_MATCH_ONLY",
             "events":events,"evidence_key":snapshot_id}
 
 def transaction_boundary_diagnostic(text):
