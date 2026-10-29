@@ -1,5 +1,5 @@
 import unittest
-from g1_history_events import parse_events,certify
+from g1_history_events import parse_events,certify,transaction_boundary_diagnostic
 FIXTURE="Lamtara 1\n401\nProperty History\n● RENTED\nAED\n190,000\nDec 2025 - Dec 2026\nNew contract\n● RENTED\nAED\n195,000\nNov 2024 - Nov 2025\nNew contract\n● RENTED\nAED\n195,000\nNov 2023 - Nov 2024\nNew contract\n● SOLD\nAED\n3,600,000\n13, Dec 2022\nResale\nSold by Individual\n● SOLD\nAED\n2,890,000\n08, Feb 2022\nPrimary\nSold by Developer\n"
 class Tests(unittest.TestCase):
  def test_five_events(self):
@@ -12,6 +12,11 @@ class Tests(unittest.TestCase):
   self.assertEqual(events[3]["date"],"2022-12-13")
  def test_certification(self):
   self.assertEqual(certify(FIXTURE,"Lamtara 1","401","/search/test","2026-10-29T18:00Z")["status"],"VERIFIED")
+ def test_card_boundaries(self):
+  diag=transaction_boundary_diagnostic(FIXTURE)
+  self.assertEqual(diag["marker_count"],5)
+  self.assertEqual([e["event_marker"] for e in diag["markers"]],["RENTED"]*3+["SOLD"]*2)
+  self.assertEqual(diag["markers"][0]["amounts_aed"],[190000])
  def test_other_unit_hold(self):
   self.assertEqual(certify(FIXTURE,"Lamtara 1","402","/search/test","2026-10-29T18:00Z")["status"],"HOLD")
  def test_missing_rent_hold(self):
