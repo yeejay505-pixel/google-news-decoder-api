@@ -17,6 +17,11 @@ class Tests(unittest.TestCase):
   self.assertEqual(diag["marker_count"],5)
   self.assertEqual([e["event_marker"] for e in diag["markers"]],["RENTED"]*3+["SOLD"]*2)
   self.assertEqual(diag["markers"][0]["amounts_aed"],[190000])
+ def test_arbitrary_event_count(self):
+  shortened=FIXTURE[:FIXTURE.index("● RENTED")]+FIXTURE[FIXTURE.index("● SOLD"):]
+  receipt=certify(shortened,"Lamtara 1","401","/search/test","2026-10-30T00:00Z")
+  self.assertEqual(receipt["status"],"VERIFIED")
+  self.assertEqual(len(receipt["events"]),2)
  def test_other_unit_hold(self):
   self.assertEqual(certify(FIXTURE,"Lamtara 1","402","/search/test","2026-10-29T18:00Z")["status"],"HOLD")
  def test_missing_rent_hold(self):
@@ -25,11 +30,11 @@ class Tests(unittest.TestCase):
   changed=FIXTURE.replace("Nov 2023 - Nov 2024","Jun 2023 - Jun 2024")
   receipt=certify(changed,"Lamtara 1","401","/search/test","2026-10-29T18:00Z")
   self.assertEqual(receipt["status"],"HOLD")
-  self.assertEqual(receipt["reason"],"THIRD_RENTAL_PERIOD_CONFLICT_REQUIRES_REVIEW")
+  self.assertEqual(receipt["reason"],"OVERLAPPING_RENTAL_PERIODS_REQUIRE_SOURCE_REVIEW")
  def test_spurious_overlapping_rental_hold(self):
   extra="● RENTED\\nAED\\n190,000\\nApr 2024 - Jun 2026\\nNew contract\\n"
   changed=FIXTURE.replace("● SOLD",extra+"● SOLD",1)
   receipt=certify(changed,"Lamtara 1","401","/search/test","2026-10-29T18:00Z")
   self.assertEqual(receipt["status"],"HOLD")
-  self.assertIn(receipt["reason"],("OVERLAPPING_RENTAL_PERIODS_REQUIRE_SOURCE_REVIEW","FIVE_EVENT_COMPLETENESS_UNVERIFIED"))
+  self.assertIn(receipt["reason"],("OVERLAPPING_RENTAL_PERIODS_REQUIRE_SOURCE_REVIEW","EVENT_CARD_PARITY_UNVERIFIED"))
 if __name__=="__main__":unittest.main()
