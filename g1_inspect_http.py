@@ -4,7 +4,7 @@ import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlsplit
 from g1_unit_history_adapter import inspect_open_tab
-from g1_evidence_store import persist
+from g1_evidence_store import persist, persist_review
 
 class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
@@ -16,6 +16,10 @@ class Handler(BaseHTTPRequestHandler):
   if evidence and evidence.get("status")=="VERIFIED":
    try: result["persistence"]=persist(evidence)
    except Exception as exc: result["persistence"]={"stored":False,"error_type":type(exc).__name__}
+  review=result.get("review_record") if isinstance(result,dict) else None
+  if review and review.get("status")=="CONFLICT_REQUIRES_REVIEW":
+   try: result["review_persistence"]=persist_review(review)
+   except Exception as exc: result["review_persistence"]={"stored":False,"error_type":type(exc).__name__}
   blob=json.dumps(result,sort_keys=True).encode()
   self.send_response(200)
   self.send_header("Content-Type","application/json")
