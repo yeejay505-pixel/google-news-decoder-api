@@ -5,13 +5,52 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlsplit, parse_qs
 from g1_unit_queue import read_cached
 from g1_wf02e_preview import handoff_preview
+from g1_live_unit_batch import create_batch, status as batch_status, record_observation
 from g1_unit_history_adapter import inspect_open_tab
 from g1_evidence_store import persist, persist_review
 
 class Handler(BaseHTTPRequestHandler):
+ def do_POST(self):
+  route=urlsplit(self.path).path
+  if route not in ("/batch-create","/batch-capture"):
+   self.send_error(404); return
+  try:
+   count=int(self.headers.get("Content-Length","0"))
+   if count<2 or count>4096: raise ValueError("INVALID_REQUEST_SIZE")
+   obj=json.loads(self.rfile.read(count))
+   if route=="/batch-create":
+    response=create_batch(obj.get("building"),obj.get("units"))
+   else:
+    bid=obj.get("batch_id")
+    previous=batch_status(bid)
+    if previous.get("status")=="NOT_FOUND":raise ValueError("UNKNOWN_BATCH")
+    unit=previous.get("next_unit")
+    if not unit:response={"status":"COMPLETE","batch":previous}
+    else:
+     inspected=asyncio.run(inspect_open_tab(previous["building"],unit))
+     ev=inspected.get("event_certification",{})
+     review=inspected.get("review_record",{})
+     if ev.get("status")=="VERIFIED":
+      inspected["persistence"]=persist(ev)
+     elif review.get("status")=="CONFLICT_REQUIRES_REVIEW":
+      inspected["review_persistence"]=persist_review(review)
+     receipt=record_observation(bid,unit,inspected)
+     response={"unit":unit,"receipt":receipt,"batch":batch_status(bid)}
+  except Exception as exc:
+   response={"status":"HOLD","reason":"BATCH_OPERATION_FAILED","error_type":type(exc).__name__}
+  self.send_json(response)
+ def send_json(self,obj):
+  blob=json.dumps(obj,sort_keys=True).encode()
+  self.send_response(200)
+  self.send_header("Content-Type","application/json")
+  self.send_header("Cache-Control","no-store")
+  self.send_header("Content-Length",str(len(blob)))
+  self.end_headers()
+  self.wfile.write(blob)
+
  def do_GET(self):
   route=urlsplit(self.path)
-  if route.path not in ("/inspect","/cache","/handoff-preview"):
+  if route.path not in ("/inspect","/cache","/handoff-preview","/batch-status"):
    self.send_error(404); return
   params=parse_qs(route.query)
   building=params.get("building",[""])[0]
@@ -19,8 +58,8 @@ class Handler(BaseHTTPRequestHandler):
   if route.path=="/inspect" and not building and not unit:
    building,unit="Lamtara 1","401" # legacy test endpoint only
   try:
-   if not building or not unit: raise ValueError("EXPLICIT_BUILDING_AND_UNIT_REQUIRED")
-   result=read_cached(building,unit) if route.path=="/cache" else handoff_preview(building,unit) if route.path=="/handoff-preview" else asyncio.run(inspect_open_tab(building,unit))
+   if route.path!="/batch-status" and (not building or not unit): raise ValueError("EXPLICIT_BUILDING_AND_UNIT_REQUIRED")
+   result=batch_status(params.get("batch_id",[""])[0]) if route.path=="/batch-status" else read_cached(building,unit) if route.path=="/cache" else handoff_preview(building,unit) if route.path=="/handoff-preview" else asyncio.run(inspect_open_tab(building,unit))
   except Exception as exc: result={"status":"HOLD","reason":"Inspection error","error_type":type(exc).__name__}
   evidence=result.get("event_certification") if route.path=="/inspect" and isinstance(result,dict) else None
   if evidence and evidence.get("status")=="VERIFIED":
