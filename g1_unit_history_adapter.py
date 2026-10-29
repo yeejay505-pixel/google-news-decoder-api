@@ -79,6 +79,21 @@ async def inspect_open_tab():
                 return {"status": "HOLD", "reason": "TARGET_CHANGED_DURING_READ"}
             evidence=certify(body, "Lamtara 1", "401", urlsplit(original_url).path, datetime.now(timezone.utc).isoformat())
             result["event_certification"]=evidence
+            if evidence.get("status")=="HOLD":
+                # Minimal, allowlisted diagnostic from history section only.
+                # Never return owner names, addresses, phone numbers, or arbitrary DOM.
+                section=body.lower().rfind("property history")
+                if section>=0:
+                    candidates=body[section:section+14000].splitlines()
+                    import re as _re
+                    keep=_re.compile(r"(?:\\b(?:AED|SOLD|RENTED|RENTAL|RENT|NEW CONTRACT|RENEWAL|PRIMARY|RESALE)\\b|\\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\\b|\\d{1,2}[, /-]+\\d{4})",_re.I)
+                    eligible=[line.strip() for line in candidates if keep.search(line)]
+                    # Replace unrecognized alphabetic words with a generic marker.
+                    def redact(line):
+                        tokens=_re.findall(r"AED|SOLD|RENTED|RENTAL|RENT|NEW|CONTRACT|RENEWAL|PRIMARY|RESALE|\\d[\\d,. /-]*|JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER|JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC",line,_re.I)
+                        return " ".join(tokens)[:140]
+                    result["event_diagnostic"]={"eligible_line_count":len(eligible),"samples":[redact(line) for line in eligible[:32]]}
+
             result.update({"page_title": title[:120], "target_path": urlsplit(original_url).path,
                            "observed_at_utc": datetime.now(timezone.utc).isoformat(),
                            "method": "direct-target-cdp", "stored": False})
