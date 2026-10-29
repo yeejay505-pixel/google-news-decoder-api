@@ -6,6 +6,7 @@ set -eu
 mkdir -p /run /data/openbrowser-broker/config /data/openbrowser-pool
 umask 077
 printf '%s:%s\n' "$OPENBROWSER_UI_USER" "$(printf '%s' "$OPENBROWSER_UI_PASSWORD" | openssl passwd -apr1 -stdin)" > /run/openbrowser-ui.htpasswd
+chgrp www-data /run/openbrowser-ui.htpasswd
 chmod 640 /run/openbrowser-ui.htpasswd
 printf '%s\n' '{"identities":{"dxb-poc":{"label":"DXBinteract human handoff","site":"dxbinteract.com","slot":"pool-a","profile_dir":"/data/openbrowser-pool/profiles/dxb-poc","lang":"en-US","policy":{"max_parallel_sessions":1,"requires_human_auth":true}}}}' > /data/openbrowser-broker/config/identities.local.json
 profile=/data/openbrowser-pool/profiles/dxb-poc
