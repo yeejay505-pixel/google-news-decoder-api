@@ -13,6 +13,7 @@ COPY g1_history_events.py /app/g1_history_events.py
 COPY test_g1_history_events.py /app/test_g1_history_events.py
 COPY g1_evidence_store.py /app/g1_evidence_store.py
 COPY test_g1_evidence_store.py /app/test_g1_evidence_store.py
+COPY test_g1_conflict_review.py /app/test_g1_conflict_review.py
 COPY g1_volume_smoke.py /app/g1_volume_smoke.py
 COPY g1_inspect_http.py /app/g1_inspect_http.py
 COPY test_g1_unit_history_adapter.py /app/test_g1_unit_history_adapter.py
