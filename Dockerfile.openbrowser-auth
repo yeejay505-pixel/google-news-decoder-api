@@ -3,7 +3,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates openssl nginx chromium x11vnc websockify novnc xvfb curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN git clone --depth 1 https://github.com/floomhq/openbrowser.git /app
-RUN pip install -e . && python -m playwright install --with-deps chromium
+RUN pip install -e . 'websockets>=13,<17' && python -m playwright install --with-deps chromium
 RUN ln -s /usr/bin/chromium /usr/local/bin/google-chrome
 COPY openbrowser_auth_nginx.conf /etc/nginx/conf.d/openbrowser.conf
 RUN rm -f /etc/nginx/sites-enabled/default
