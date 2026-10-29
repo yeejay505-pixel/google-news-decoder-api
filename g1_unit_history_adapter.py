@@ -14,19 +14,15 @@ HOST_RE = re.compile(r"^https://(?:www\.)?dxbinteract\.com(?:/|$)", re.I)
 PRICE_RE = re.compile(r"(?:AED\s*)?([0-9][0-9,]{3,})\s*(?:AED)?", re.I)
 
 def parse_reference(text, building, unit):
-    text = re.sub(r"\s+", " ", text or "")
-    # Diagnostic evidence: do not infer a unit from prices alone.
-    normalized = text.lower()
-    identity = building.lower() in normalized and bool(re.search(r"(?<!\d)"+re.escape(unit)+r"(?!\d)", text))
-    if not identity:
-        return {"status":"HOLD","reason":"Exact building and unit not both present in currently visible page","building":building,"unit":unit}
-    beds = bool(re.search(r"2\s*(?:beds?|bedrooms?)", text, re.I))
-    size = bool(re.search(r"1[,]?356(?:\.0+)?\s*(?:sq\.?\s*ft|sqft)", text, re.I))
-    sale = bool(re.search(r"(?:3,600,000|3600000)", text))
-    rent = bool(re.search(r"(?:190,000|190000)", text))
-    return {"status":"EVIDENCE_PRESENT" if all((beds,size,sale,rent)) else "INCOMPLETE",
-            "building":building,"unit":unit,"reference_checks":{"two_bedrooms":beds,"size_1356_sqft":size,"sale_3600000":sale,"rent_190000":rent},
-            "note":"Reference-value presence only; dates/event attribution still require review"}
+    # Identity is required; previous price/size/bedroom constants were test-only.
+    flattened = re.sub(r"\\s+", " ", text or "").casefold()
+    match_building = building.strip().casefold() in flattened
+    match_unit = bool(re.search(r"(?<![a-z0-9])"+re.escape(unit.casefold())+r"(?![a-z0-9])", flattened))
+    if not match_building or not match_unit:
+        return {"status":"HOLD","reason":"EXACT_UNIT_IDENTITY_NOT_PROVEN",
+                "building":building,"unit":unit}
+    return {"status":"IDENTITY_TEXT_PRESENT","building":building,"unit":unit,
+            "identity_check":"TEXT_MATCH_ONLY"}
 
 def cdp_targets():
     # Local Chrome discovery only. Do not expose debugger WebSocket addresses.
