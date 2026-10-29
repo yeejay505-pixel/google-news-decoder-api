@@ -31,9 +31,16 @@ async def inspect_open_tab():
         try:
             if not browser.contexts:
                 return {"status":"HOLD","reason":"No existing browser context"}
-            pages=[page for context in browser.contexts for page in context.pages if HOST_RE.match(page.url)]
+            from urllib.parse import urlsplit
+            all_pages=[page for context in browser.contexts for page in context.pages]
+            pages=[page for page in all_pages if HOST_RE.match(page.url)]
             if len(pages)!=1:
-                return {"status":"HOLD","reason":"Expected exactly one already-open DXBinteract tab","matching_tabs":len(pages)}
+                hosts=[]
+                for tab in all_pages:
+                    parts=urlsplit(tab.url)
+                    host=(parts.hostname or parts.scheme or "unknown").lower()
+                    if host not in hosts: hosts.append(host)
+                return {"status":"HOLD","reason":"Expected exactly one already-open DXBinteract tab","matching_tabs":len(pages),"total_visible_tabs":len(all_pages),"visible_tab_hosts":hosts[:10],"browser_contexts":len(browser.contexts)}
             page=pages[0]
             title=await page.title()
             body=await page.locator("body").inner_text(timeout=8000)
