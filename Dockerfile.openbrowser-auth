@@ -37,3 +37,6 @@ CMD ["sh","/app/auth_start.sh"]
 
 COPY r2_listing_opportunity_engine.py /app/r2_listing_opportunity_engine.py
 COPY test_r2_listing_opportunity_engine.py /app/test_r2_listing_opportunity_engine.py
+
+COPY r2_public_listing_research_sample.py /app/r2_public_listing_research_sample.py
+COPY test_r2_public_listing_research_sample.py /app/test_r2_public_listing_research_sample.py
