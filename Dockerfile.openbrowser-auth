@@ -34,3 +34,6 @@ COPY openbrowser_restored_tabs.py /app/openbrowser_restored_tabs.py
 ENV OPENBROWSER_BROKER_HOST=127.0.0.1 OPENBROWSER_BROKER_ROOT=/data/openbrowser-broker OPENBROWSER_BROWSER_POOL_DIR=/data/openbrowser-pool OPENBROWSER_SLOT_COUNT=1
 EXPOSE 8767
 CMD ["sh","/app/auth_start.sh"]
+
+COPY r2_listing_opportunity_engine.py /app/r2_listing_opportunity_engine.py
+COPY test_r2_listing_opportunity_engine.py /app/test_r2_listing_opportunity_engine.py
